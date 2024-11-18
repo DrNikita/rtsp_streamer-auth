@@ -1,4 +1,7 @@
+version: "3.8"
+
 services:
+  # Сервис для базы данных Postgres
   postgres:
     image: postgres:13.3
     environment:
@@ -15,6 +18,7 @@ services:
       - db-data:/var/lib/postgresql/data
     restart: always
 
+  # Сервис для pgAdmin
   pgadmin-compose:
     image: dpage/pgadmin4
     environment:
@@ -30,6 +34,7 @@ services:
       - postgres
     restart: always
 
+  # Сервис для MinIO
   minio:
     image: minio/minio:latest
     command: server --console-address ":9001" /data/
@@ -48,6 +53,36 @@ services:
       retries: 3
     networks:
       - app-network
+    restart: always
+
+  # Сервис для RTSP-стримера
+  rtsp-streamer:
+    build:
+      context: ./rtsp-streamer  # Указываем папку с проектом rtsp-streamer
+      dockerfile: Dockerfile    # Путь к Dockerfile внутри папки rtsp-streamer
+    env_file:
+      - ./rtsp-streamer/.env   # Указываем путь к .env для rtsp-streamer
+    ports:
+      - "8554:8554"  # RTSP порт
+    networks:
+      - app-network
+    depends_on:
+      - minio
+    restart: always
+
+  # Сервис для Auth-сервиса
+  auth-service:
+    build:
+      context: ./auth-service  # Указываем папку с проектом auth-service
+      dockerfile: Dockerfile    # Путь к Dockerfile внутри папки auth-service
+    env_file:
+      - ./auth-service/.env   # Указываем путь к .env для auth-service
+    ports:
+      - "8000:8000"  # Порт для auth-service
+    networks:
+      - app-network
+    depends_on:
+      - postgres
     restart: always
 
 networks:
